@@ -1,0 +1,90 @@
+---
+title: "Confidence intervals in ToothGrowth dataset"
+author: "Alex"
+date: "Monday, September 21, 2015"
+output: html_document
+---
+
+
+```{r include=FALSE}
+library(dplyr)
+library(datasets)
+library(ggplot2)
+```
+
+## Basic exploratory data analyses
+
+```{r}
+data(ToothGrowth)
+# ?ToothGrowth
+str(ToothGrowth)
+print(ggplot(data=ToothGrowth, aes(x=dose, y=len, shape = supp, color=supp)) +
+      ggtitle("ToothGrowth data: length vs dose, given type of supplement") +              
+      geom_point(size=6, alpha=0.5))
+```
+
+ToothGrowth dataset describes length of teeth 60 guinea pigs treated with
+Vitamin C. There were six groups of the animals: 10 guinea pigs at each
+of three dose levels of Vitamin C (0.5, 1, and 2 mg) with each of two delivery
+methods (orange juice or ascorbic acid).
+
+# Confidence intervals
+
+Visually we see that teeth length significantly higher for each level of
+supplement dose. Let's see confidence intervals to see if it is indeed so,
+and intuitive comprehension of the chart doesn't trick us.
+
+We calculate change in mean of length for four pair of groups (change of does from
+0.5 to 1.0 and from 1.0 to 2.0 for both types of delivery) and see if it lies
+within the t confidence interval.
+
+```{r}
+t.test(ToothGrowth$len[ToothGrowth$supp == "OJ" & ToothGrowth$dose == 1],
+       ToothGrowth$len[ToothGrowth$supp == "OJ" & ToothGrowth$dose == 0.5]
+       )$conf.int
+mean(ToothGrowth$len[ToothGrowth$supp == "OJ" & ToothGrowth$dose == 1]) -
+        mean(ToothGrowth$len[ToothGrowth$supp == "OJ" & ToothGrowth$dose == 0.5])
+t.test(ToothGrowth$len[ToothGrowth$supp == "OJ" & ToothGrowth$dose == 2],
+       ToothGrowth$len[ToothGrowth$supp == "OJ" & ToothGrowth$dose == 1]
+       )$conf.int
+mean(ToothGrowth$len[ToothGrowth$supp == "OJ" & ToothGrowth$dose == 2]) -
+        mean(ToothGrowth$len[ToothGrowth$supp == "OJ" & ToothGrowth$dose == 1])
+t.test(ToothGrowth$len[ToothGrowth$supp == "VC" & ToothGrowth$dose == 1],
+       ToothGrowth$len[ToothGrowth$supp == "VC" & ToothGrowth$dose == 0.5]
+       )$conf.int
+mean(ToothGrowth$len[ToothGrowth$supp == "VC" & ToothGrowth$dose == 1]) -
+        mean(ToothGrowth$len[ToothGrowth$supp == "VC" & ToothGrowth$dose == 0.5])
+t.test(ToothGrowth$len[ToothGrowth$supp == "VC" & ToothGrowth$dose == 2],
+       ToothGrowth$len[ToothGrowth$supp == "VC" & ToothGrowth$dose == 1]
+       )$conf.int
+mean(ToothGrowth$len[ToothGrowth$supp == "VC" & ToothGrowth$dose == 2]) -
+        mean(ToothGrowth$len[ToothGrowth$supp == "VC" & ToothGrowth$dose == 1])
+```
+
+It does indeed lies within in every case.
+
+Does it matter if we take in account delivery method?
+
+```{r}
+t.test(ToothGrowth$len[ToothGrowth$dose == 1],
+       ToothGrowth$len[ToothGrowth$dose == 0.5]
+       )$conf.int
+mean(ToothGrowth$len[ToothGrowth$dose == 1]) -
+        mean(ToothGrowth$len[ToothGrowth$dose == 0.5])
+t.test(ToothGrowth$len[ToothGrowth$dose == 2],
+       ToothGrowth$len[ToothGrowth$dose == 1]
+       )$conf.int
+mean(ToothGrowth$len[ToothGrowth$dose == 2]) -
+        mean(ToothGrowth$len[ToothGrowth$dose == 1])
+```
+
+No, it doesn't.
+
+## Result
+
+Assuming data is normally distributed, and using t distribution for safer
+approximation for small given number of observations, the confidence interval
+show that that change in teeth length is statistically significant for each
+level of dose increase, both with separate analysis of two different delivery
+ways, and mixed as well. Given this, we can say that vitamin C supplements
+do indeed increase tooth length in guinea pigs.
