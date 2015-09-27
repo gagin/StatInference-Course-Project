@@ -24,14 +24,11 @@ does indeed increase length of guinea pigs' tooth.
 
 ## Basic exploratory data analyses
 
-ToothGrowth dataset describes length of teeth 60 guinea pigs treated with
-Vitamin C. There were six groups of the animals: 10 guinea pigs at each
-of three dose levels of Vitamin C (0.5, 1, and 2 mg) with each of two delivery
-methods (orange juice or ascorbic acid).
 
 ```{r}
 data(ToothGrowth)
 # ?ToothGrowth
+head(ToothGrowth)
 summary(ToothGrowth)
 str(ToothGrowth)
 print(ggplot(data=ToothGrowth, aes(x=dose, y=len, shape=supp)) +
@@ -46,57 +43,76 @@ print(ggplot(data=ToothGrowth, aes(x=dose, y=len, shape=supp)) +
               )
 ```
 
+ToothGrowth dataset describes response in the length of teeth of 10 guinea pigs
+treated with Vitamin C. There are six groups produced for three dose levels
+(0.5, 1 and 2 mg) and two supplement delivery methods (orange juice and ascorbic
+acid).  
+
+There were six groups of the animals: 10 guinea pigs at each
+of three dose levels of Vitamin C (0.5, 1, and 2 mg) with each of two delivery
+methods (orange juice or ascorbic acid).
 
 # Confidence intervals
+
+Intuitive interpretation of the data on the chart is that supplement does
+affects tooth length, but delivery type efficiency depends on dose. Let's
+check this intuitive interpretations by calculating confidence intervals.
+
+## Length per dose
 
 Visually we see that teeth length significantly higher for each level of
 supplement dose. This is our assumption. Let's calculate confidence intervals
 to see if it is indeed so,
 and intuitive comprehension of the chart doesn't trick us.
 
-We calculate change in mean of length for four pair of groups (change of does from
-0.5 to 1.0 and from 1.0 to 2.0 for both types of delivery) and see if it lies
-within the t confidence interval. Notice that t.test()'s default value for
-paired is FALSE, and this is what we want, because these are different animals
-in each group.
+
+It's not completely clear if 10 guinea pigs described
+in the help page for ToothGrowth dataset are the same animals in each of groups,
+or different ones. Even if they are the same, there's no clear indication in the
+dataset of particular rodents, so we are going to treat them as if they were
+different, and data points aren't paired. If we will still see that changes
+are signigicant, then it will be true even if pigs were the same and data points
+paired, because paired data is less variable, and less confidence intervals are
+narrower.
+
+
+We calculate confidence intervals for tooth length change for four pair of groups:
+dose change from 0.5 to 1 and dose  change from 1 to 2 - for each type of
+supplement.
+Notice that t.test()'s default value for paired is FALSE, and this is what we want.
+We also presume that variability in groups isn't equal and
+this is also the default setting for the t test.
 
 ```{r}
-CheckIntervalByDose <- function(supp,before,after) {
-      d<-t.test(ToothGrowth$len[ToothGrowth$supp == supp & ToothGrowth$dose == after],
-       ToothGrowth$len[ToothGrowth$supp == supp & ToothGrowth$dose == before]
+CheckIntervalByDose <- function(before,after,supp) {
+      if(missing(supp)) suppC <- TRUE else suppC <- ToothGrowth$supp == supp
+      t.test(ToothGrowth$len[ToothGrowth$dose == after & suppC],
+       ToothGrowth$len[ToothGrowth$dose == before & suppC]
        )$conf.int
-m<-mean(ToothGrowth$len[ToothGrowth$supp == supp & ToothGrowth$dose == after]) -
-        mean(ToothGrowth$len[ToothGrowth$supp == supp & ToothGrowth$dose == before])
-cat(paste("Is difference of means",m," inside confidence interval",d[1],"-",d[2],"?\n"))
-m
-between(m,d[1],d[2]) 
 }
 
-CheckIntervalByDose('OJ', 0.5, 1)
-CheckIntervalByDose('OJ', 1,   2)
-CheckIntervalByDose('VC', 0.5, 1)
-CheckIntervalByDose('VC', 1,   2)
+CheckIntervalByDose(0.5, 1, "OJ")
+CheckIntervalByDose(1,   2, "OJ")
+CheckIntervalByDose(0.5, 1, "VC")
+CheckIntervalByDose(1,   2, "VC")
 ```
-The difference of means does indeed lies within the confidence interval in every case.
 
-Does it actually matter if we analyze the data separately by delivery method?
+We see that the confidence intervals lie entirely above zero in every case,
+so it's clear that increasing the dosage of the supplement does indeed increase
+tooth length in guinea pigs with 95% confidence level.
+
+Now, it probably wouldn't make much sense for a real research to lose
+information we have about the experiment and ignore supplement delivery type,
+but just for the training purposes, let's see if the result changes when we do
+that.
 ```{r}
-JustByDose <- function(before, after) {
-(d<-t.test(ToothGrowth$len[ToothGrowth$dose == after],
-       ToothGrowth$len[ToothGrowth$dose == before]
-       )$conf.int)
-(m<-mean(ToothGrowth$len[ToothGrowth$dose == after]) -
-        mean(ToothGrowth$len[ToothGrowth$dose == before]))
-cat(paste("Is difference of means",m," inside confidence interval",d[1],"-",d[2],"?\n"))
-between(m,d[1],d[2])
-}
-JustByDose(0.5, 1)
-JustByDose(1,   2)
+CheckIntervalByDose(0.5, 1)
+CheckIntervalByDose(1,   2)
 ```
-No, it doesn't. Even without taking supplement type in account, changes in
-tooth length still lie within the confidence interval.
-
-Let's see if delivery method  
+Intervals are still entirely above zero, and the distances aren't dramatically
+different than before - it's probably because increased variability was
+compensated by having twice as much data points, and having more points
+increases confidence.
 
 ## Result
 Assuming data is normally distributed, and using t distribution for safer
