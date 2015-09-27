@@ -4,13 +4,12 @@ of Vitamin C supplement on guinea pig tooth growth"
 author: "Alex Gaggin"
 output:
   pdf_document:
-    fig_height: 4.5
+    fig_height: 3.6
   html_document: default
 ---
 \fontfamily{cmr}
 \fontsize{10}{16}
 \selectfont
-
 ```{r include=FALSE}
 library(dplyr)
 library(datasets)
@@ -18,12 +17,11 @@ library(ggplot2)
 ```
 
 ## Overview
-
 Confidence intervals in ToothGrowth dataset show that Vitamin C supplement
-does indeed increase length of guinea pigs' tooth.
+increases length of guinea pigs' tooth, and orange juice should be preferrable
+way of delivering supplement at lower doses.
 
 ## Basic exploratory data analyses
-
 
 ```{r}
 data(ToothGrowth)
@@ -42,29 +40,16 @@ print(ggplot(data=ToothGrowth, aes(x=dose, y=len, shape=supp)) +
                        labels=c("Orange Juice", "Ascorbic Acid"))  
               )
 ```
-
 ToothGrowth dataset describes response in the length of teeth of 10 guinea pigs
 treated with Vitamin C. There are six groups produced for three dose levels
 (0.5, 1 and 2 mg) and two supplement delivery methods (orange juice and ascorbic
 acid).  
 
-There were six groups of the animals: 10 guinea pigs at each
-of three dose levels of Vitamin C (0.5, 1, and 2 mg) with each of two delivery
-methods (orange juice or ascorbic acid).
-
 # Confidence intervals
 
 Intuitive interpretation of the data on the chart is that supplement does
 affects tooth length, but delivery type efficiency depends on dose. Let's
-check this intuitive interpretations by calculating confidence intervals.
-
-## Length per dose
-
-Visually we see that teeth length significantly higher for each level of
-supplement dose. This is our assumption. Let's calculate confidence intervals
-to see if it is indeed so,
-and intuitive comprehension of the chart doesn't trick us.
-
+verify by calculating confidence intervals.
 
 It's not completely clear if 10 guinea pigs described
 in the help page for ToothGrowth dataset are the same animals in each of groups,
@@ -72,39 +57,80 @@ or different ones. Even if they are the same, there's no clear indication in the
 dataset of particular rodents, so we are going to treat them as if they were
 different, and data points aren't paired. If we will still see that changes
 are signigicant, then it will be true even if pigs were the same and data points
-paired, because paired data is less variable, and less confidence intervals are
+paired, because paired data is less variable, and paired confidence intervals are
 narrower.
 
-
+## Length per dose
 We calculate confidence intervals for tooth length change for four pair of groups:
 dose change from 0.5 to 1 and dose  change from 1 to 2 - for each type of
 supplement.
 Notice that t.test()'s default value for paired is FALSE, and this is what we want.
 We also presume that variability in groups isn't equal and
 this is also the default setting for the t test.
-
 ```{r}
 CheckIntervalByDose <- function(before,after,supp) {
       if(missing(supp)) suppC <- TRUE else suppC <- ToothGrowth$supp == supp
       t.test(ToothGrowth$len[ToothGrowth$dose == after & suppC],
        ToothGrowth$len[ToothGrowth$dose == before & suppC]
-       )$conf.int
+       )$conf.int %>% cat
 }
-
 CheckIntervalByDose(0.5, 1, "OJ")
 CheckIntervalByDose(1,   2, "OJ")
 CheckIntervalByDose(0.5, 1, "VC")
 CheckIntervalByDose(1,   2, "VC")
 ```
-
 We see that the confidence intervals lie entirely above zero in every case,
 so it's clear that increasing the dosage of the supplement does indeed increase
 tooth length in guinea pigs with 95% confidence level.
 
-Now, it probably wouldn't make much sense for a real research to lose
-information we have about the experiment and ignore supplement delivery type,
+## Length per supplement
+Does supplement delivery affect tooth length?
+
+```{r}
+print(ggplot(ToothGrowth, aes(x=supp, y=len, fill=supp)) + geom_boxplot() +
+        ylab("Tooth length") + guides(fill=FALSE) +xlab("Delivery type") +
+        facet_wrap(~dose))
+```
+It looks like for lower doses orange juice is more efficient delivery mechanism,
+while for 2mg dose it doesn't matter anymore. Let's check these assumptions
+by calculating confidence intervals, assuming data isn't paired and variance
+can be different for each group.
+```{r}
+CheckIntervalBySupp <- function(dose) {
+      t.test(ToothGrowth$len[ToothGrowth$dose == dose & ToothGrowth$supp == "OJ"],
+       ToothGrowth$len[ToothGrowth$dose == dose & ToothGrowth$supp == "VC"]
+       )$conf.int %>% cat
+}
+CheckIntervalBySupp(0.5)
+CheckIntervalBySupp(1)
+CheckIntervalBySupp(2)
+```
+Indeed, we see that it's only at higher dosage of 2mg we can't say if vitamin C
+delivery method makes a difference. But for 0.5mg and 1mg orange juice is
+better, as confidence intervals in these cases lie entirely above zero.
+Efficiency doesn't seem to be dependant on the dose in a linear way though,
+as confidence for 0.5mg and 1mg aren't very different.
+
+# Result
+Assuming data is normally distributed, and using t distribution for safer
+approximation for small given number of observations, the confidence intervals
+show that
+
+* change in teeth length is statistically significant for each
+level of dose increase,
+* orange juice is more effective delivery mechanism for vitamic c for lower
+doses of the supplement.
+
+# Appendices
+
+### Appendix 1. Effect of ignoring data structure aspects
+It probably wouldn't make much sense for a real research to lose
+information we have about the experiment,
 but just for the training purposes, let's see if the result changes when we do
 that.
+
+First, let's ignore supplement delivery type when checking length dependance on
+the dose.
 ```{r}
 CheckIntervalByDose(0.5, 1)
 CheckIntervalByDose(1,   2)
@@ -114,10 +140,31 @@ different than before - it's probably because increased variability was
 compensated by having twice as much data points, and having more points
 increases confidence.
 
-## Result
-Assuming data is normally distributed, and using t distribution for safer
-approximation for small given number of observations, the confidence interval
-show that that change in teeth length is statistically significant for each
-level of dose increase, both with separate analysis of two different delivery
-ways, and mixed as well. Given this, we can say that vitamin C supplements
-do indeed increase tooth length in guinea pigs.
+Now, let's try to see delivery type effect without separation by dose.
+```{r}
+print(ggplot(ToothGrowth, aes(x=supp, y=len, fill=supp)) + geom_boxplot() +
+        ylab("Tooth length") + guides(fill=FALSE) +xlab("Delivery type"))
+```
+The plot looks like orange juice is better, but is it?
+```{r}
+t.test(ToothGrowth$len[ToothGrowth$supp == "OJ"],
+       ToothGrowth$len[ToothGrowth$supp == "VC"]
+       )$conf.int %>% cat
+```
+
+We see that if variance isn't the same for each group, and rodents were
+different in each group, then we can't say that in general orange juice is
+more effective, because our confidence interval touches zero.
+
+### Appendix 2. Effect of presumed equal variance
+
+By the way, what if we are to presume equal variance here, will this assumption
+tip the scales?
+```{r}
+t.test(ToothGrowth$len[ToothGrowth$supp == "OJ"],
+       ToothGrowth$len[ToothGrowth$supp == "VC"],
+       var.equal=TRUE
+       )$conf.int %>% cat
+```
+Well, interval became a bit narrower but not narrow enough to miss zero. So
+in general, orange juice isn't more effective.
