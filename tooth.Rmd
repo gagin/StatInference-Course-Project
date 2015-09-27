@@ -1,10 +1,15 @@
 ---
-title: "Confidence intervals in ToothGrowth dataset"
-author: "Alex"
-date: "Monday, September 21, 2015"
-output: html_document
+title: "Research of confidence intervals in effect
+of Vitamin C supplement on guinea pig tooth growth"
+author: "Alex Gaggin"
+output:
+  pdf_document:
+    fig_height: 4.5
+  html_document: default
 ---
-
+\fontfamily{cmr}
+\fontsize{10}{16}
+\selectfont
 
 ```{r include=FALSE}
 library(dplyr)
@@ -12,76 +17,88 @@ library(datasets)
 library(ggplot2)
 ```
 
-## Basic exploratory data analyses
+## Overview
 
-```{r}
-data(ToothGrowth)
-# ?ToothGrowth
-str(ToothGrowth)
-print(ggplot(data=ToothGrowth, aes(x=dose, y=len, shape = supp, color=supp)) +
-      ggtitle("ToothGrowth data: length vs dose, given type of supplement") +              
-      geom_point(size=6, alpha=0.5))
-```
+Confidence intervals in ToothGrowth dataset show that Vitamin C supplement
+does indeed increase length of guinea pigs' tooth.
+
+## Basic exploratory data analyses
 
 ToothGrowth dataset describes length of teeth 60 guinea pigs treated with
 Vitamin C. There were six groups of the animals: 10 guinea pigs at each
 of three dose levels of Vitamin C (0.5, 1, and 2 mg) with each of two delivery
 methods (orange juice or ascorbic acid).
 
+```{r}
+data(ToothGrowth)
+# ?ToothGrowth
+summary(ToothGrowth)
+str(ToothGrowth)
+print(ggplot(data=ToothGrowth, aes(x=dose, y=len, shape=supp)) +
+             xlab("Dose") +
+             ylab("Tooth length") +
+      ggtitle("ToothGrowth data: length vs dose") +              
+      geom_point(size=6, alpha=0.5, fill="red") + #guides(shape=FALSE) +
+        scale_shape_manual(values=c(22, 24),
+                           name="Supplement type",
+                       breaks=c("OJ", "VC"),
+                       labels=c("Orange Juice", "Ascorbic Acid"))  
+              )
+```
+
+
 # Confidence intervals
 
 Visually we see that teeth length significantly higher for each level of
-supplement dose. Let's see confidence intervals to see if it is indeed so,
+supplement dose. This is our assumption. Let's calculate confidence intervals
+to see if it is indeed so,
 and intuitive comprehension of the chart doesn't trick us.
 
 We calculate change in mean of length for four pair of groups (change of does from
 0.5 to 1.0 and from 1.0 to 2.0 for both types of delivery) and see if it lies
-within the t confidence interval.
+within the t confidence interval. Notice that t.test()'s default value for
+paired is FALSE, and this is what we want, because these are different animals
+in each group.
 
 ```{r}
-t.test(ToothGrowth$len[ToothGrowth$supp == "OJ" & ToothGrowth$dose == 1],
-       ToothGrowth$len[ToothGrowth$supp == "OJ" & ToothGrowth$dose == 0.5]
+CheckIntervalByDose <- function(supp,before,after) {
+      d<-t.test(ToothGrowth$len[ToothGrowth$supp == supp & ToothGrowth$dose == after],
+       ToothGrowth$len[ToothGrowth$supp == supp & ToothGrowth$dose == before]
        )$conf.int
-mean(ToothGrowth$len[ToothGrowth$supp == "OJ" & ToothGrowth$dose == 1]) -
-        mean(ToothGrowth$len[ToothGrowth$supp == "OJ" & ToothGrowth$dose == 0.5])
-t.test(ToothGrowth$len[ToothGrowth$supp == "OJ" & ToothGrowth$dose == 2],
-       ToothGrowth$len[ToothGrowth$supp == "OJ" & ToothGrowth$dose == 1]
-       )$conf.int
-mean(ToothGrowth$len[ToothGrowth$supp == "OJ" & ToothGrowth$dose == 2]) -
-        mean(ToothGrowth$len[ToothGrowth$supp == "OJ" & ToothGrowth$dose == 1])
-t.test(ToothGrowth$len[ToothGrowth$supp == "VC" & ToothGrowth$dose == 1],
-       ToothGrowth$len[ToothGrowth$supp == "VC" & ToothGrowth$dose == 0.5]
-       )$conf.int
-mean(ToothGrowth$len[ToothGrowth$supp == "VC" & ToothGrowth$dose == 1]) -
-        mean(ToothGrowth$len[ToothGrowth$supp == "VC" & ToothGrowth$dose == 0.5])
-t.test(ToothGrowth$len[ToothGrowth$supp == "VC" & ToothGrowth$dose == 2],
-       ToothGrowth$len[ToothGrowth$supp == "VC" & ToothGrowth$dose == 1]
-       )$conf.int
-mean(ToothGrowth$len[ToothGrowth$supp == "VC" & ToothGrowth$dose == 2]) -
-        mean(ToothGrowth$len[ToothGrowth$supp == "VC" & ToothGrowth$dose == 1])
+m<-mean(ToothGrowth$len[ToothGrowth$supp == supp & ToothGrowth$dose == after]) -
+        mean(ToothGrowth$len[ToothGrowth$supp == supp & ToothGrowth$dose == before])
+cat(paste("Is difference of means",m," inside confidence interval",d[1],"-",d[2],"?\n"))
+m
+between(m,d[1],d[2]) 
+}
+
+CheckIntervalByDose('OJ', 0.5, 1)
+CheckIntervalByDose('OJ', 1,   2)
+CheckIntervalByDose('VC', 0.5, 1)
+CheckIntervalByDose('VC', 1,   2)
 ```
+The difference of means does indeed lies within the confidence interval in every case.
 
-It does indeed lies within in every case.
-
-Does it matter if we take in account delivery method?
-
+Does it actually matter if we analyze the data separately by delivery method?
 ```{r}
-t.test(ToothGrowth$len[ToothGrowth$dose == 1],
-       ToothGrowth$len[ToothGrowth$dose == 0.5]
-       )$conf.int
-mean(ToothGrowth$len[ToothGrowth$dose == 1]) -
-        mean(ToothGrowth$len[ToothGrowth$dose == 0.5])
-t.test(ToothGrowth$len[ToothGrowth$dose == 2],
-       ToothGrowth$len[ToothGrowth$dose == 1]
-       )$conf.int
-mean(ToothGrowth$len[ToothGrowth$dose == 2]) -
-        mean(ToothGrowth$len[ToothGrowth$dose == 1])
+JustByDose <- function(before, after) {
+(d<-t.test(ToothGrowth$len[ToothGrowth$dose == after],
+       ToothGrowth$len[ToothGrowth$dose == before]
+       )$conf.int)
+(m<-mean(ToothGrowth$len[ToothGrowth$dose == after]) -
+        mean(ToothGrowth$len[ToothGrowth$dose == before]))
+cat(paste("Is difference of means",m," inside confidence interval",d[1],"-",d[2],"?\n"))
+between(m,d[1],d[2])
+}
+JustByDose(0.5, 1)
+JustByDose(1,   2)
 ```
+No, it doesn't. Even without taking supplement type in account, changes in
+tooth length still lie within the confidence interval.
 
-No, it doesn't.
+Let's see if delivery method  
 
 ## Result
-
 Assuming data is normally distributed, and using t distribution for safer
 approximation for small given number of observations, the confidence interval
 show that that change in teeth length is statistically significant for each
